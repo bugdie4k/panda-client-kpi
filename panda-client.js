@@ -8,11 +8,16 @@ const tcpPortBuffer = Buffer.alloc(4)
 tcpPortBuffer.writeInt32BE(tcpPort)
 const serverPort = 48654
 
-// const updDgramDestinationAddress = '255.255.255.255'
-const updDgramDestinationAddress = '192.168.1.110'
+const updDgramDestinationAddress = '255.255.255.255'
+// const updDgramDestinationAddress = '192.168.1.110'
 
 const udpSocket = dgram.createSocket('udp4')
-udpSocket.send(tcpPortBuffer, 0, 4, serverPort, updDgramDestinationAddress, () => console.log(`SENT TCPPORT ${tcpPort}`))
+udpSocket.on('listening', () => udpSocket.setBroadcast(true));
+
+udpSocket.send(tcpPortBuffer, 0, 4,
+    serverPort,
+    updDgramDestinationAddress,
+    () => console.log(`SENT TCPPORT ${tcpPort} TO ${updDgramDestinationAddress}\n`))
 
 function parseInput(buf) {
     const input = []
@@ -28,12 +33,31 @@ function parseInput(buf) {
 }
 
 const tcpServer = net.createServer(socket => {
-    console.log('★★★ SERVER STARTED ★★★')
+    console.log('★★★ SERVER STARTED ★★★\n')
     socket.on('data', buf => {
-        // console.log(`RECEIVED BUFFER => ${JSON.stringify(buf)}`)
-        // console.log(`LENGTH = ${buf.length}`)
         const parsed = parseInput(buf)
-        console.log(inspect(parsed))
+
+        console.log(`RECEIVED TASK #${parsed.task} WITH ARRAYS OF LENGTHS ${parsed.arr1.length} AND ${parsed.arr2.length}`)
+        // console.log(inspect(parsed))
+
+        const resArray = []
+        for (let i = 0; i < parsed.arr1.length; ++i)
+            resArray.push(parsed.arr1[i] + parsed.arr2[i])
+        const responseBuffer = Buffer.alloc((resArray.length + 2) * 4)
+        responseBuffer.writeInt32BE(parsed.task, 0)
+        responseBuffer.writeInt32BE(resArray.length, 4)
+        for (let i = 0; i < resArray.length; ++i) {
+            /* console.log('-- WRITING ' + resArray[i])
+            console.log(inspect(responseBuffer)) */
+            responseBuffer.writeInt32BE(resArray[i], 8 + 4 * i)
+        }
+
+        console.log(`RESPONDING TO TASK #${parsed.task} WITH ARRAY OF LENGTH ${resArray.length}\n`)
+        // console.log(inspect(resArray))
+        // console.log(inspect(responseBuffer))
+
+        socket.write(responseBuffer)
     })
 })
-tcpServer.listen(tcpPort, os.networkInterfaces().ppp0[0].address)
+// os.networkInterfaces().ppp0[0].address,
+tcpServer.listen(tcpPort, () => console.log(`LISTENING FOR TCP ON PORT ${tcpPort}`))
