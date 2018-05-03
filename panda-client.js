@@ -1,7 +1,6 @@
 const dgram = require('dgram')
 const net = require('net')
 const os = require('os')
-const { inspect } = require('util')
 
 const tcpPort = 55555
 const tcpPortBuffer = Buffer.alloc(4)
@@ -37,8 +36,8 @@ const tcpServer = net.createServer(socket => {
     socket.on('data', buf => {
         const parsed = parseInput(buf)
 
-        console.log(`RECEIVED TASK #${parsed.task} WITH ARRAYS OF LENGTHS ${parsed.arr1.length} AND ${parsed.arr2.length}`)
-        // console.log(inspect(parsed))
+        console.log(`-- RECEIVED TASK #${parsed.task} WITH ARRAYS OF LENGTHS ${parsed.arr1.length} AND ${parsed.arr2.length}`)
+        console.log(JSON.stringify(parsed))
 
         const resArray = []
         for (let i = 0; i < parsed.arr1.length; ++i)
@@ -47,14 +46,12 @@ const tcpServer = net.createServer(socket => {
         responseBuffer.writeInt32BE(parsed.task, 0)
         responseBuffer.writeInt32BE(resArray.length, 4)
         for (let i = 0; i < resArray.length; ++i) {
-            /* console.log('-- WRITING ' + resArray[i])
-            console.log(inspect(responseBuffer)) */
             responseBuffer.writeInt32BE(resArray[i], 8 + 4 * i)
         }
 
-        console.log(`RESPONDING TO TASK #${parsed.task} WITH ARRAY OF LENGTH ${resArray.length}\n`)
-        // console.log(inspect(resArray))
-        // console.log(inspect(responseBuffer))
+        console.log(`-- RESPONDING TO TASK #${parsed.task} WITH ARRAY OF LENGTH ${resArray.length}`)
+        console.log(JSON.stringify(resArray))
+        console.log()
 
         socket.write(responseBuffer)
     })
